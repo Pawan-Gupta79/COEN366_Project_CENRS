@@ -24,10 +24,10 @@ An application-layer emergency notification protocol built on **UDP** (control a
 
 | Member | Role | Component Owned |
 |--------|------|-----------------|
-| _Name A(Pawan)_ | Server Core and Reliability | UDP server, alert handling, retransmission engine |
-| _Name B(Matthew)_ | Persistence and Recovery | Database, crash recovery, server TCP sync |
-| _Name C(Hala)_ | Client (Subscriber) | Client UDP, duplicate detection, attachment download |
-| _Name D(Larry)_ | Publisher and P2P | Publisher commands, TCP file server, attachment discovery |
+| _Name A (Pawan)_ | Server Core and Reliability | UDP server, alert handling, retransmission engine |
+| _Name B (Matthew)_ | Persistence and Recovery | Database, crash recovery, server TCP sync |
+| _Name C (Hala)_ | Client (Subscriber) | Client UDP, duplicate detection, attachment download |
+| _Name D (Larry)_ | Publisher and P2P | Publisher commands, TCP file server, attachment discovery |
 
 ---
 
