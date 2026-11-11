@@ -69,6 +69,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] Retransmission engine: pending-ACK table, timer thread, 3 attempts, `UNCONFIRMED`
 - [ ] Packet-loss simulation flag for demos
 - [ ] Owns the final protocol spec document
+- [ ] **Main files:** `server/udp_handler.py`, `server/alert_manager.py`, `server/reliability.py`, `common/logger.py`
 
 ### Member B (Matthew): Persistence, Recovery, and Server TCP
 
@@ -77,6 +78,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] Crash recovery and re-registration after server restart
 - [ ] TCP server for `GET_ACTIVE_ALERTS` / `ACTIVE_ALERTS` and its record encoding
 - [ ] `STATUS_REPORT` handling (`STATUS_RECORDED` / `STATUS_REJECTED`)
+- [ ] **Main files:** `server/db.py`, `server/tcp_handler.py`, `server/test_recovery.py`
 
 ### Member C (Hala): Client (Subscriber Side)
 
@@ -86,6 +88,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] `ATTACH_REQ` flow and TCP download client
 - [ ] Checksum verification, `ATTACH_OK` / `ATTACH_ERROR`
 - [ ] Client side of `GET_ACTIVE_ALERTS` sync on reconnect
+- [ ] **Main files:** `client/udp_listener.py`, `client/state.py`, `client/tcp_downloader.py`
 
 ### Member D (Larry): Publisher Side and P2P File Server
 
@@ -94,6 +97,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] `ATTACH_DATA` header, exact `File_Size` bytes, checksum
 - [ ] Server-side `ATTACH_REQ` / `ATTACH_INFO` / `ATTACH_DENIED` (coordinate with Member A)
 - [ ] Error cases: missing file, publisher unavailable, truncated transfer, bad checksum
+- [ ] **Main files:** `client/main.py` (publisher commands), `client/tcp_file_server.py`
 
 ---
 
@@ -136,39 +140,63 @@ An application-layer emergency notification protocol built on **UDP** (control a
 
 ```
 .
+cenrs/
 ├── README.md
+├── requirements.txt          # likely empty or tiny, stdlib covers most of it
+├── .gitignore                # __pycache__/, *.db, logs/, received_files/
 ├── docs/
-│   ├── protocol_spec.md       # Message formats and encoding
-│   └── report/                # Report sources
-├── server/
-│   ├── main
-│   ├── udp_handler
-│   ├── tcp_handler
-│   ├── reliability            # ACK timers and retransmission
-│   └── db                     # Persistence layer
-├── client/
-│   ├── main
-│   ├── udp_listener
-│   ├── tcp_file_server        # Publisher side
-│   └── tcp_downloader         # Subscriber side
+│   ├── protocol_spec.md
+│   └── report/
 ├── common/
-│   ├── messages               # Encode and decode
-│   └── logger
-└── tests/
+│   ├── __init__.py
+│   ├── messages.py           # encode/decode, validation
+│   ├── constants.py          # locations, categories, severities, timeouts, ports
+│   ├── net_utils.py          # UDP send wrapper (with packet-loss flag), TCP read helpers
+│   └── logger.py
+├── server/
+│   ├── __init__.py
+│   ├── main.py               # entry point: starts UDP + TCP threads
+│   ├── udp_handler.py        # receive loop and message dispatch
+│   ├── tcp_handler.py        # GET_ACTIVE_ALERTS
+│   ├── alert_manager.py      # publish/update/close, subscription matching
+│   ├── reliability.py        # pending-ACK table, timer thread, retransmits
+│   └── db.py                 # SQLite schema and data access
+├── client/
+│   ├── __init__.py
+│   ├── main.py               # entry point and CLI loop
+│   ├── udp_listener.py       # incoming alerts, duplicate detection
+│   ├── tcp_file_server.py    # publisher side, serves GET_ATTACHMENT
+│   ├── tcp_downloader.py     # subscriber side, checksum verification
+│   └── state.py              # seen (Incident_ID, Version) set, own subscriptions
+├── tests/
+│   ├── test_messages.py
+│   ├── test_reliability.py
+│   ├── test_recovery.py
+│   └── demo_scripts/         # packet loss, concurrent downloads, crash recovery
+├── data/                     # SQLite file lives here (gitignored)
+├── logs/                     # gitignored
+├── shared_files/             # publisher's attachments (sample PDFs for demos)
+└── received_files/           # subscriber downloads (gitignored)
 ```
 
 ---
 
 ## Getting Started
 
-_Fill in once the implementation language is chosen._
+**Requirements:** Python 3.10+ (standard library only unless `requirements.txt` says otherwise)
+
+Run everything from the repository root, as modules, so the imports resolve:
 
 ```bash
 # Start the server
-<command>
+python -m server.main
 
-# Start a client
-<command> --name Alice --role SUBSCRIBER --udp 5001 --tcp 6001
+# Start a client (one terminal per client)
+python -m client.main --name Alice --role SUBSCRIBER --udp 5001 --tcp 6001
+python -m client.main --name CampusSecurity --role PUBLISHER --udp 5002 --tcp 6100
+
+# Run tests
+python -m unittest discover tests
 ```
 
 ---
