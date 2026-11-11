@@ -24,10 +24,10 @@ An application-layer emergency notification protocol built on **UDP** (control a
 
 | Member | Role | Component Owned |
 |--------|------|-----------------|
-| _Name A_ | Server Core and Reliability | UDP server, alert handling, retransmission engine |
-| _Name B_ | Persistence and Recovery | Database, crash recovery, server TCP sync |
-| _Name C_ | Client (Subscriber) | Client UDP, duplicate detection, attachment download |
-| _Name D_ | Publisher and P2P | Publisher commands, TCP file server, attachment discovery |
+| _Name A(Pawan)_ | Server Core and Reliability | UDP server, alert handling, retransmission engine |
+| _Name B(Matthew)_ | Persistence and Recovery | Database, crash recovery, server TCP sync |
+| _Name C(Hala)_ | Client (Subscriber) | Client UDP, duplicate detection, attachment download |
+| _Name D(Larry)_ | Publisher and P2P | Publisher commands, TCP file server, attachment discovery |
 
 ---
 
@@ -59,7 +59,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 
 ## Task Breakdown
 
-### Member A: Server Core (UDP) and Reliability
+### Member A (Pawan): Server Core (UDP) and Reliability
 
 - [ ] UDP receive loop, thread pool, and message dispatcher
 - [ ] `REGISTER` / `DE-REGISTER` with validation and error replies
@@ -70,7 +70,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] Packet-loss simulation flag for demos
 - [ ] Owns the final protocol spec document
 
-### Member B: Persistence, Recovery, and Server TCP
+### Member B (Matthew): Persistence, Recovery, and Server TCP
 
 - [ ] Database schema and data access layer (agreed with Member A)
 - [ ] Persist users, subscriptions, incidents (version and status), attachment metadata, status reports, and the Incident_ID counter
@@ -78,7 +78,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] TCP server for `GET_ACTIVE_ALERTS` / `ACTIVE_ALERTS` and its record encoding
 - [ ] `STATUS_REPORT` handling (`STATUS_RECORDED` / `STATUS_REJECTED`)
 
-### Member C: Client (Subscriber Side)
+### Member C (Hala): Client (Subscriber Side)
 
 - [ ] Client UDP listener thread and command-line interface
 - [ ] Registration, subscription, and status-report commands
@@ -87,7 +87,7 @@ An application-layer emergency notification protocol built on **UDP** (control a
 - [ ] Checksum verification, `ATTACH_OK` / `ATTACH_ERROR`
 - [ ] Client side of `GET_ACTIVE_ALERTS` sync on reconnect
 
-### Member D: Publisher Side and P2P File Server
+### Member D (Larry): Publisher Side and P2P File Server
 
 - [ ] Publisher commands: publish, update, close
 - [ ] TCP listener with one thread per download, serving `GET_ATTACHMENT`
