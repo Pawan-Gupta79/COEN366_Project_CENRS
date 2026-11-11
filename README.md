@@ -1,40 +1,203 @@
-# COEN366_Project_CENRS
-CENRS - design and implement an application-layer communication protocol using both UDP and TCP. The system simulates an emergency notification service for a university campus. Typical incidents include fire alarms, security incidents, severe weather, power outages, building closures, and other urgent campus situations.
+# CENRS: Campus Emergency Notification and Response System
 
+**COEN 366: Communication Networks and Protocols, Fall 2026, Concordia University**
 
-Person A(Pawan): Server core (UDP) and reliability
+An application-layer emergency notification protocol built on **UDP** (control and real-time alerts) and **TCP** (reliable data transfer), with a central Emergency Server and peer-to-peer attachment transfer between clients.
 
-UDP receive loop, thread pool, and message dispatch
-REGISTER/DE-REGISTER, SUBSCRIBE/UNSUBSCRIBE, and validation and error replies
-PUBLISH_ALERT, UPDATE_ALERT, and CLOSE_ALERT handling, including subscription matching with the ALL wildcards
-The retransmission engine: a pending-ACK table, a timer thread, 3 attempts, then UNCONFIRMED, plus the packet-loss simulation flag
+---
 
-Person B(Matthew): Persistence, recovery, and server TCP
+## Table of Contents
 
-The SQLite schema and data access layer, shared with Person A, so agree on the interface early
-Persisting users, subscriptions, incidents (version and status), attachment metadata, status reports, and the Incident_ID counter
-Crash recovery and re-registration after a restart
-The TCP server for GET_ACTIVE_ALERTS and ACTIVE_ALERTS, with its record encoding
-STATUS_REPORT handling on the server side
+- [Team](#team)
+- [System Overview](#system-overview)
+- [Task Breakdown](#task-breakdown)
+- [Shared Responsibilities](#shared-responsibilities)
+- [Development Phases](#development-phases)
+- [Repository Structure](#repository-structure)
+- [Getting Started](#getting-started)
+- [Team Workflow](#team-workflow)
+- [Deliverables Checklist](#deliverables-checklist)
 
-Person C(Hala): Client (subscriber side)
+---
 
-The client UDP listener and command-line interface
-Registration, subscribing, and status reports
-Duplicate detection with (Incident_ID, Version) and re-ACKing duplicates
-The ATTACH_REQ flow, and the TCP download client with checksum verification and ATTACH_OK/ATTACH_ERROR
-The client side of GET_ACTIVE_ALERTS sync on reconnect
+## Team
 
-Person D(Larry): Publisher side and the P2P file server
+| Member | Role | Component Owned |
+|--------|------|-----------------|
+| _Name A_ | Server Core and Reliability | UDP server, alert handling, retransmission engine |
+| _Name B_ | Persistence and Recovery | Database, crash recovery, server TCP sync |
+| _Name C_ | Client (Subscriber) | Client UDP, duplicate detection, attachment download |
+| _Name D_ | Publisher and P2P | Publisher commands, TCP file server, attachment discovery |
 
-Client publisher commands: publish, update, and close
-The TCP listener thread that spawns a thread per download, serves GET_ATTACHMENT, and sends the header, then the exact bytes, then the checksum
-ATTACH_REQ/ATTACH_INFO/ATTACH_DENIED handling on the server (coordinate with Person A)
-Error cases: file missing, publisher gone, transfer cut short, bad checksum
+---
 
-Shared, assigned by name
+## System Overview
 
-Protocol spec doc (message formats, encoding, error codes): everyone drafts it, and one person (I’d say Person A) owns the final version. Do this first, before anyone codes.
-Logging module: Person A writes a tiny shared one, and everyone uses it.
-Test scripts and failure demos: each person writes tests for their own slice. For example, B kills and restarts the server, C and D run concurrent downloads, and A demonstrates packet loss.
-Report: each person writes the sections matching their component, plus their own line in the contributions section. One person does final assembly and editing.
+```
+                 ┌─────────────────────┐
+                 │  Emergency Server   │
+                 │    UDP  │  TCP      │
+                 └─────────────────────┘
+                   ▲        ▲        ▲
+        UDP / TCP  │        │        │  UDP / TCP
+          ┌────────┘        │        └────────┐
+   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+   │  Subscriber  │  │  Publisher   │  │     BOTH     │
+   └──────────────┘  └──────┬───────┘  └──────────────┘
+          ▲                 │ TCP (direct file transfer)
+          └─────────────────┘
+```
+
+| Transport | Used for |
+|-----------|----------|
+| **UDP** | Registration, subscriptions, alerts, ACKs, updates, ALL_CLEAR, status reports, attachment discovery |
+| **TCP** | Peer-to-peer attachment transfer, active-incident synchronization |
+
+**Key requirements:** application-level reliability for CRITICAL alerts (ACK, timeout, up to 3 attempts, then `UNCONFIRMED`), duplicate detection, multi-threaded server and clients, persistent server state, and application-level file checksums.
+
+---
+
+## Task Breakdown
+
+### Member A: Server Core (UDP) and Reliability
+
+- [ ] UDP receive loop, thread pool, and message dispatcher
+- [ ] `REGISTER` / `DE-REGISTER` with validation and error replies
+- [ ] `SUBSCRIBE` / `UNSUBSCRIBE` and subscription matching (including `ALL` wildcards)
+- [ ] `PUBLISH_ALERT`, `UPDATE_ALERT`, `CLOSE_ALERT` handling
+- [ ] Alert distribution (`ALERT`, `ALERT_UPDATE`, `ALL_CLEAR`)
+- [ ] Retransmission engine: pending-ACK table, timer thread, 3 attempts, `UNCONFIRMED`
+- [ ] Packet-loss simulation flag for demos
+- [ ] Owns the final protocol spec document
+
+### Member B: Persistence, Recovery, and Server TCP
+
+- [ ] Database schema and data access layer (agreed with Member A)
+- [ ] Persist users, subscriptions, incidents (version and status), attachment metadata, status reports, and the Incident_ID counter
+- [ ] Crash recovery and re-registration after server restart
+- [ ] TCP server for `GET_ACTIVE_ALERTS` / `ACTIVE_ALERTS` and its record encoding
+- [ ] `STATUS_REPORT` handling (`STATUS_RECORDED` / `STATUS_REJECTED`)
+
+### Member C: Client (Subscriber Side)
+
+- [ ] Client UDP listener thread and command-line interface
+- [ ] Registration, subscription, and status-report commands
+- [ ] Duplicate detection using `(Incident_ID, Version)`, re-ACK without re-displaying
+- [ ] `ATTACH_REQ` flow and TCP download client
+- [ ] Checksum verification, `ATTACH_OK` / `ATTACH_ERROR`
+- [ ] Client side of `GET_ACTIVE_ALERTS` sync on reconnect
+
+### Member D: Publisher Side and P2P File Server
+
+- [ ] Publisher commands: publish, update, close
+- [ ] TCP listener with one thread per download, serving `GET_ATTACHMENT`
+- [ ] `ATTACH_DATA` header, exact `File_Size` bytes, checksum
+- [ ] Server-side `ATTACH_REQ` / `ATTACH_INFO` / `ATTACH_DENIED` (coordinate with Member A)
+- [ ] Error cases: missing file, publisher unavailable, truncated transfer, bad checksum
+
+---
+
+## Shared Responsibilities
+
+| Item | Owner | Notes |
+|------|-------|-------|
+| Protocol spec (formats, encoding, error codes) | Everyone drafts, **A** finalizes | Freeze before coding |
+| Logging module | **A** writes, all use | Every message sent, received, and failed must be visible |
+| Test scripts and failure demos | Each member, for their own slice | See below |
+| Report assembly and editing | _TBD_ | Each member writes their own sections |
+| Contributions section of report | Everyone | One entry per member |
+
+**Suggested demo and test scenarios**
+
+| Scenario | Lead |
+|----------|------|
+| Packet loss, retransmission, `UNCONFIRMED` | A |
+| Server kill and restart, state recovery | B |
+| Duplicate `ALERT` / `ALL_CLEAR` handling | C |
+| Concurrent attachment downloads | C and D |
+| Publisher offline, corrupted or truncated file | D |
+
+---
+
+## Development Phases
+
+| Phase | Target | Scope |
+|-------|--------|-------|
+| **1** | Late October | Registration, subscription, basic persistence, logging |
+| **2** | Mid-November | Publish, alert, ACK, update, close, ALL_CLEAR, status, timers, retransmission, duplicates, concurrency |
+| **3** | Late November | P2P attachments, checksums, `GET_ACTIVE_ALERTS`, recovery, error handling, integrated testing |
+| **Final** | Week 13 | Report and demonstration |
+
+---
+
+## Repository Structure
+
+> Adjust to match your chosen language.
+
+```
+.
+├── README.md
+├── docs/
+│   ├── protocol_spec.md       # Message formats and encoding
+│   └── report/                # Report sources
+├── server/
+│   ├── main
+│   ├── udp_handler
+│   ├── tcp_handler
+│   ├── reliability            # ACK timers and retransmission
+│   └── db                     # Persistence layer
+├── client/
+│   ├── main
+│   ├── udp_listener
+│   ├── tcp_file_server        # Publisher side
+│   └── tcp_downloader         # Subscriber side
+├── common/
+│   ├── messages               # Encode and decode
+│   └── logger
+└── tests/
+```
+
+---
+
+## Getting Started
+
+_Fill in once the implementation language is chosen._
+
+```bash
+# Start the server
+<command>
+
+# Start a client
+<command> --name Alice --role SUBSCRIBER --udp 5001 --tcp 6001
+```
+
+---
+
+## Team Workflow
+
+- **Freeze message formats and DB interfaces in the first meeting.** Most integration problems come from mismatched formats.
+- **Use short-lived feature branches** and open a pull request for each merge. At least one teammate reviews it.
+- **Integrate weekly** instead of merging everything near the demo.
+- **Write the report as you go**: assumptions, design justifications, and test results.
+- **Rehearse the demo** with members rotating who explains which part. Everyone must be able to answer questions on any component.
+
+---
+
+## Deliverables Checklist
+
+- [ ] Client and server implementation (UDP and TCP, multi-threaded)
+- [ ] Persistent server state with crash recovery
+- [ ] Communication logging (screen or log file)
+- [ ] Project report covering:
+  - [ ] Assumptions and error-handling decisions
+  - [ ] Message encoding and parsing
+  - [ ] TCP message and file boundary handling
+  - [ ] RQ# and Incident_ID generation
+  - [ ] Concurrency design (server and publisher peers)
+  - [ ] UDP timers, retransmission, and duplicate detection
+  - [ ] Checksum choice and justification
+  - [ ] Persistence and recovery
+  - [ ] Testing and experimental observations
+  - [ ] Code structure
+  - [ ] Individual contributions of each member
+- [ ] Demonstration (Week 13), all members present
